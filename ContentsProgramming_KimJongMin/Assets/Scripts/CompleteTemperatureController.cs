@@ -2,62 +2,56 @@ using UnityEngine;
 
 public class CompleteTemperatureController : MonoBehaviour
 {
+    [Header("타겟(자식 bar)")]
+    public Transform bar; // ← 여기에 자식 큐브(Bar) 드래그
+
     [Header("온도 설정")]
-    public float temperature = 25.0f;     // 온도
-    public float maxHeight = 3.0f;        // 최대 높이
-    
+    public float temperature = 25.0f;
+    public float maxHeight = 3.0f;
+
     [Header("디버깅")]
-    public bool showDebugInfo = true;     // 디버그 정보 표시
-    
-    private Renderer objectRenderer;       // Renderer 컴포넌트
-    private float nextDebugTime = 0f;      // 다음 디버그 출력 시간
-    
+    public bool showDebugInfo = true;
+
+    private Renderer objectRenderer;
+    private float nextDebugTime = 0f;
+
     void Start()
     {
-        // Renderer 컴포넌트 가져오기
-        objectRenderer = GetComponent<Renderer>();
-        
-        if (objectRenderer == null)
+        if (bar == null)
         {
-            Debug.LogError("이 GameObject에는 Renderer가 없습니다!");
+            Debug.LogError("bar(자식 큐브)를 Inspector에 할당하세요!");
+            enabled = false;
+            return;
         }
-        
+
+        // ✅ 자식(bar)에서 Renderer 가져오기 (원래: GetComponent<Renderer>())
+        objectRenderer = bar.GetComponentInChildren<Renderer>();
+        if (objectRenderer == null) Debug.LogError("bar 아래에서 Renderer를 찾지 못했습니다.");
+
         Debug.Log("온도계 시작! 초기 온도: " + temperature + "도");
     }
-    
+
     void Update()
     {
-        // 1. 높이 제어 (온도에 비례)
-        // 온도를 높이로 변환 (0~50도 범위)
-        float height = temperature / 50.0f * maxHeight;
-        if (height < 0.1f) height = 0.1f;  // 최소 높이 보장
-        transform.localScale = new Vector3(1, height, 1);
-        
-        // 2. 색상 제어 (온도 구간별)
+        // ✅ bar에만 높이 적용 (원래: transform.localScale)
+        float height = Mathf.Max(0.1f, (temperature / 50.0f) * maxHeight);
+        Vector3 s = bar.localScale; s.y = height; bar.localScale = s;
+
+        // ✅ 피벗이 중앙인 큐브를 '아래 고정'으로 보정
+        Vector3 p = bar.localPosition; p.y = height * 0.5f; bar.localPosition = p;
+
+        // 색상은 기존 로직 그대로, 단 대상은 objectRenderer
         if (objectRenderer != null)
         {
-            if (temperature < 15.0f)
-            {
-                // 추운 날씨 - 파란색
-                objectRenderer.material.color = Color.blue;
-            }
-            else if (temperature >= 15.0f && temperature < 30.0f)
-            {
-                // 적당한 날씨 - 녹색
-                objectRenderer.material.color = Color.green;
-            }
-            else
-            {
-                // 더운 날씨 - 빨간색
-                objectRenderer.material.color = Color.red;
-            }
+            if (temperature < 15.0f)       objectRenderer.material.color = Color.blue;
+            else if (temperature < 30.0f)  objectRenderer.material.color = Color.green;
+            else                           objectRenderer.material.color = Color.red;
         }
-        
-        // 3. 디버그 정보 (1초마다 한 번씩)
+
         if (showDebugInfo && Time.time >= nextDebugTime)
         {
-            Debug.Log("[" + gameObject.name + "] 온도: " + temperature + "도, 높이: " + height.ToString("F2"));
-            nextDebugTime = Time.time + 1.0f;  // 1초 후 다시 출력
+            Debug.Log($"[{gameObject.name}] 온도: {temperature}도, 높이: {height:F2}");
+            nextDebugTime = Time.time + 1.0f;
         }
     }
 }
